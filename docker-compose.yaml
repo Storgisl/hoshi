@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  musicgen:
+    build: .
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./generated:/app/generated
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
