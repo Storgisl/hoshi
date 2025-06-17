@@ -1,13 +1,18 @@
-version: "3.8"
 services:
   musicgen:
     build: .
+    restart: always
     ports:
       - "5050:5050"
     volumes:
-      - ./generated:/app/generated
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - capabilities: [gpu]
+      - ./shared/generated:/app/generated
+      - ~/.cache/huggingface/hub:/root/.cache/huggingface/hub:ro
+    depends_on:
+      - db
+    networks:
+      - musicnet
+    runtime: nvidia  # <-- Add this line
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+

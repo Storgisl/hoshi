@@ -1,47 +1,49 @@
-# app/server.py
-from flask import Flask, request, jsonify, send_file, send_from_directory
+# musicgen/app.py
+from flask import Flask, request, jsonify, send_file
 from generate_music import generate_music
-import os
 from flask_cors import CORS
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/tracks.json')
-def tracks_json():
-    return send_from_directory('/workspace/generated', 'tracks.json')
-
 @app.route("/generate", methods=["POST"])
 def generate():
     data = request.get_json()
-    prompt = data.get("prompt")
+    prompt   = data.get("prompt")
     duration = float(data.get("duration", 30))
-    bpm = data.get("bpm", None)
-    tempo = data.get("tempo", None)
-    name = data.get("name", None)
+    bpm      = data.get("bpm")
+    tempo    = data.get("tempo")
+    name     = data.get("name") or "output"
+    username = data.get("username")
 
-    if not prompt:
-        return jsonify({"error": "Prompt is required"}), 400
+    if not prompt or not username:
+        return jsonify({"error": "Prompt and username are required"}), 400
 
-    try:
-        bpm = int(bpm) if bpm else None
-        path, gen_id = generate_music(prompt, duration, bpm, tempo, name=name)
-        return jsonify({
-            "status": "success",
-            "file": f"/download/{gen_id}",
-            "id": gen_id
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    bpm = int(bpm) if bpm else None
 
-@app.route("/download/<gen_id>")
-@app.route("/download/<gen_id>.wav")
-def download(gen_id):
-    file_path = f"/workspace/generated/{gen_id}/output.wav.wav"
-    print("Checking path:", file_path)
+    path, gen_id = generate_music(
+        prompt=prompt,
+        duration=duration,
+        bpm=bpm,
+        tempo=tempo,
+        username=username,
+        name=name
+    )
+
+    filename = os.path.basename(path)
+
+    return jsonify({
+        "status": "success",
+        "file": f"/download/{username}/{filename}",
+        "id": gen_id
+    })
+
+@app.route("/download/<username>/<filename>")
+def download(username, filename):
+    file_path = f"/shared/generated/{username}/{filename}"
     if os.path.exists(file_path):
         return send_file(file_path, as_attachment=True)
-    print("File not found!")
     return jsonify({"error": "File not found"}), 404
 
 if __name__ == "__main__":
